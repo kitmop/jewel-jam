@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+
+<!-- iOS "Add to Home Screen" full-screen app mode -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Gem Rush">
+<meta name="theme-color" content="#0b1020">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4 58 32 32 60 6 32z' fill='%2340e0ff'/%3E%3C/svg%3E">
+<title>Gem Rush 3D</title>
+
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  html, body {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    margin: 0; padding: 0;
+    overflow: hidden;
+    overscroll-behavior: none;      /* no pull-to-refresh / bounce */
+    touch-action: none;             /* no scroll, no pinch, no double-tap zoom */
+    background: #0b1020;
+    color: #e8f3ff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  #game {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    display: block;
+    touch-action: none;
+    outline: none;
+  }
+
+  /* ---------- HUD ---------- */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: calc(env(safe-area-inset-top, 0px) + 12px)
+             calc(env(safe-area-inset-right, 0px) + 16px)
+             0
+             calc(env(safe-area-inset-left, 0px) + 16px);
+    pointer-events: none;
+    z-index: 5;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, .6);
+  }
+  .stat { font-weight: 700; line-height: 1; }
+  .stat small { display: block; font-size: 11px; letter-spacing: .14em; opacity: .65; margin-bottom: 4px; }
+  .stat b { font-size: 34px; font-variant-numeric: tabular-nums; }
+  #hud .right { text-align: right; }
+  #time.low { color: #ff6b81; }
+
+  /* ---------- Joystick ---------- */
+  #joyZone {
+    position: fixed;
+    left: 0; bottom: 0;
+    width: 55%; height: 65%;
+    z-index: 4;
+    touch-action: none;
+  }
+  #joyBase, #joyKnob {
+    position: fixed;
+    left: 0; top: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform;
+  }
+  #joyBase {
+    width: 120px; height: 120px;
+    margin: -60px 0 0 -60px;
+    background: rgba(255, 255, 255, .08);
+    border: 2px solid rgba(255, 255, 255, .28);
+    opacity: .45;
+    transition: opacity .15s;
+    z-index: 6;
+  }
+  #joyBase.active { opacity: 1; }
+  #joyKnob {
+    width: 56px; height: 56px;
+    margin: -28px 0 0 -28px;
+    background: radial-gradient(circle at 35% 30%, #ffffff, #7fe9ff 60%, #2bb8e6);
+    box-shadow: 0 0 18px rgba(64, 224, 255, .55);
+    opacity: .75;
+    z-index: 7;
+  }
+  #joyBase.active + #joyKnob { opacity: 1; }
+
+  /* ---------- Overlay ---------- */
+  #overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+             env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+    text-align: center;
+    background: radial-gradient(ellipse at center, rgba(11, 16, 32, .55), rgba(11, 16, 32, .88));
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    touch-action: none;
+    cursor: pointer;
+  }
+  #overlay.hidden { display: none; }
+  #overlay h1 { margin: 0; font-size: clamp(34px, 9vmin, 64px); letter-spacing: .02em;
+    background: linear-gradient(90deg, #7fe9ff, #ffd36b); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #overlay p { margin: 0; font-size: clamp(15px, 3.6vmin, 20px); opacity: .85; max-width: 28em; padding: 0 24px; line-height: 1.4; }
+  #overlay .big { font-size: clamp(26px, 7vmin, 44px); font-weight: 800; opacity: 1; }
+  #startBtn {
+    margin-top: 12px;
+    padding: 14px 34px;
+    font-size: 20px; font-weight: 800; letter-spacing: .06em;
+    color: #08111f;
+    background: linear-gradient(180deg, #9ff1ff, #3ccfee);
+    border-radius: 999px;
+    box-shadow: 0 6px 24px rgba(60, 207, 238, .45);
+    animation: pulse 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+
+  /* ---------- Fatal error ---------- */
+  #fatal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 100;
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 32px; text-align: center;
+    background: #0b1020; color: #ffb4c0;
+    font-size: 16px; line-height: 1.5;
+    -webkit-user-select: text; user-select: text;
+  }
+</style>
+</head>
+
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="stat"><small>GEMS</small><b id="score">0</b></div>
+  <div class="stat right"><small>TIME</small><b id="time">30</b></div>
+</div>
+
+<div id="joyZone"></div>
+<div id="joyBase"></div>
+<div id="joyKnob"></div>
+
+<div id="overlay">
+  <h1 id="ovTitle">Gem Rush</h1>
+  <p id="ovLine1" class="big"></p>
+  <p id="ovLine2">Drag the left side of the screen to roll. Grab glowing gems to add seconds. Gold gems are worth 5!</p>
+  <div id="startBtn">TAP TO PLAY</div>
+</div>
+
+<div id="fatal"></div>
+<noscript><div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:32px;text-align:center">JavaScript is required to play.</div></noscript>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.149.0/build/three.min.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  // ------------------------------------------------------------------
+  // Fatal error screen (CDN blocked, WebGL unavailable, etc.)
+  // ------------------------------------------------------------------
+  var fatalEl = document.getElementById('fatal');
+  function fatal(msg) {
+    fatalEl.textContent = msg;
+    fatalEl.style.display = 'flex';
+  }
+  window.addEventListener('error', function (e) {
+    if (fatalEl.style.display !== 'flex') fatal('Something went wrong: ' + (e.message || 'unknown error'));
+  });
+
+  if (typeof THREE === 'undefined') {
+    fatal('Could not load the 3D engine (three.js). Check your internet connection and reload.');
+    return;
+  }
+
+  // ------------------------------------------------------------------
+  // Block every iOS Safari default touch behaviour we do not want
+  // ------------------------------------------------------------------
+  var noop = function (e) { e.preventDefault(); };
+  document.addEventListener('touchmove', noop, { passive: false });      // scrolling / rubber-band
+  document.addEventListener('gesturestart', noop, { passive: false });   // pinch zoom (Safari)
+  document.addEventListener('gesturechange', noop, { passive: false });
+  document.addEventListener('gestureend', noop, { passive: false });
+  document.addEventListener('contextmenu', noop);                        // long-press menu
+  document.addEventListener('selectstart', noop);
+  document.addEventListener('dblclick', noop);
+  // Some iOS versions still double-tap-zoom: swallow quick successive touchends.
+  var lastTouchEnd = 0;
+  document.addEventListener('touchend', function (e) {
+    var now = Date.now();
+    if (now - lastTouchEnd < 300 && e.cancelable) e.preventDefault();
+    lastTouchEnd = now;
+  }, { passive: false });
+
+  // ------------------------------------------------------------------
+  // Constants
+  // ------------------------------------------------------------------
+  var ARENA = 24;            // half-size of the square arena
+  var PLAYER_R = 0.8;
+  var MAX_SPEED = 10;
+  var ACCEL = 14;            // how quickly velocity follows the stick
+  var GEM_COUNT = 7;
+  var START_TIME = 30;
+  var MAX_TIME = 45;
+  var NUM_PILLARS = 9;
+  var MAX_DT = 0.05;
+
+  // ------------------------------------------------------------------
+  // Renderer / scene / camera
+  // ------------------------------------------------------------------
+  var canvas = document.getElementById('game');
+  var renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({
+      canvas: canvas,
+      antialias: true,
+      alpha: false,
+      powerPreference: 'high-performance'
+    });
+  } catch (err) {
+    fatal('Your browser could not start WebGL, which this game needs.');
+    return;
+  }
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+  else renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.setClearColor(0x0b1020, 1);
+
+  canvas.addEventListener('webglcontextlost', function (e) { e.preventDefault(); }, false);
+
+  var scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x0b1020);
+  scene.fog = new THREE.Fog(0x0b1020, 38, 95);
+
+  var camera = new THREE.PerspectiveCamera(55, 1, 0.5, 200);
+  var camDist = 1;             // zoom factor, widened in portrait
+  var CAM_OFFSET = new THREE.Vector3(0, 15, 12);
+
+  function resize() {
+    var w = Math.max(1, window.innerWidth);
+    var h = Math.max(1, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setSize(w, h, false);     // CSS already stretches the canvas
+    camera.aspect = w / h;
+    // Pull the camera back in portrait so the play field stays readable.
+    camDist = camera.aspect < 1 ? Math.min(1.7, 1 / Math.pow(camera.aspect, 0.8)) : 1;
+    camera.updateProjectionMatrix();
+  }
+  function scheduleResize() {
+    resize();
+    // iOS reports stale sizes right after rotation; re-check a few times.
+    setTimeout(resize, 120);
+    setTimeout(resize, 400);
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', scheduleResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
+  resize();
+
+  // ------------------------------------------------------------------
+  // Lighting
+  // ------------------------------------------------------------------
+  scene.add(new THREE.HemisphereLight(0x9bb8ff, 0x1a2038, 0.45));
+
+  var sun = new THREE.DirectionalLight(0xffffff, 0.8);
+  sun.position.set(14, 26, 10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  var sc = sun.shadow.camera;
+  sc.left = -24; sc.right = 24; sc.top = 24; sc.bottom = -24; sc.near = 1; sc.far = 80;
+  sun.shadow.bias = -0.0005;
+  scene.add(sun);
+  scene.add(sun.target);
+  var SUN_OFFSET = new THREE.Vector3(14, 26, 10);
+
+  // ------------------------------------------------------------------
+  // World: floor, grid, walls, pillars
+  // ------------------------------------------------------------------
+  var floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(ARENA * 2, ARENA * 2),
+    new THREE.MeshStandardMaterial({ color: 0x141c3a, roughness: 0.9, metalness: 0.05 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  scene.add(floor);
+
+  var grid = new THREE.GridHelper(ARENA * 2, ARENA, 0x3a6cff, 0x24315e);
+  grid.position.y = 0.01;
+  grid.material.transparent = true;
+  grid.material.opacity = 0.55;
+  scene.add(grid);
+
+  var wallMat = new THREE.MeshStandardMaterial({
+    color: 0x203060, emissive: 0x2a5cff, emissiveIntensity: 0.55, roughness: 0.5
+  });
+  var WALL_T = 1, WALL_H = 1.6;
+  [
+    [0, -ARENA - WALL_T / 2, ARENA * 2 + WALL_T * 2, WALL_T],
+    [0,  ARENA + WALL_T / 2, ARENA * 2 + WALL_T * 2, WALL_T],
+    [-ARENA - WALL_T / 2, 0, WALL_T, ARENA * 2],
+    [ ARENA + WALL_T / 2, 0, WALL_T, ARENA * 2]
+  ].forEach(function (w) {
+    var m = new THREE.Mesh(new THREE.BoxGeometry(w[2], WALL_H, w[3]), wallMat);
+    m.position.set(w[0], WALL_H / 2, w[1]);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    scene.add(m);
+  });
+
+  var pillars = [];   // {x, z, r}
+  var pillarMat = new THREE.MeshStandardMaterial({
+    color: 0x3a3f7a, emissive: 0x7a3cff, emissiveIntensity: 0.25, roughness: 0.55, metalness: 0.2
+  });
+  function placePillars() {
+    var tries = 0;
+    while (pillars.length < NUM_PILLARS && tries++ < 500) {
+      var r = 1.1 + Math.random() * 1.1;
+      var x = (Math.random() * 2 - 1) * (ARENA - r - 2);
+      var z = (Math.random() * 2 - 1) * (ARENA - r - 2);
+      if (Math.hypot(x, z) < 7) continue;                       // keep spawn area clear
+      var ok = true;
+      for (var i = 0; i < pillars.length; i++) {
+        if (Math.hypot(x - pillars[i].x, z - pillars[i].z) < r + pillars[i].r + 3.5) { ok = false; break; }
+      }
+      if (!ok) continue;
+      var h = 2.5 + Math.random() * 2.5;
+      var mesh = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 20), pillarMat);
+      mesh.position.set(x, h / 2, z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+      pillars.push({ x: x, z: z, r: r });
+    }
+  }
+  placePillars();
+
+  // ------------------------------------------------------------------
+  // Player (rolling striped sphere)
+  // ------------------------------------------------------------------
+  function makePlayerTexture() {
+    var c = document.createElement('canvas');
+    c.width = 256; c.height = 128;
+    var g = c.getContext('2d');
+    g.fillStyle = '#2bb8e6';
+    g.fillRect(0, 0, 256, 128);
+    g.fillStyle = '#e9fbff';
+    for (var i = 0; i < 8; i++) g.fillRect(i * 32 + 8, 0, 14, 128);
+    g.fillStyle = '#0b3b57';
+    g.fillRect(0, 54, 256, 20);
+    var t = new THREE.CanvasTexture(c);
+    t.anisotropy = 2;
+    if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding;
+    return t;
+  }
+  var player = new THREE.Mesh(
+    new THREE.SphereGeometry(PLAYER_R, 32, 24),
+    new THREE.MeshStandardMaterial({
+      map: makePlayerTexture(), roughness: 0.3, metalness: 0.15,
+      emissive: 0x0a4f6e, emissiveIntensity: 0.5
+    })
+  );
+  player.castShadow = true;
+  player.position.set(0, PLAYER_R, 0);
+  scene.add(player);
+
+  var vel = new THREE.Vector2(0, 0);          // x/z velocity
+  var rollAxis = new THREE.Vector3();
+  var rollQuat = new THREE.Quaternion();
+  var UP = new THREE.Vector3(0, 1, 0);
+
+  // ------------------------------------------------------------------
+  // Gems
+  // ------------------------------------------------------------------
+  var gemGeo = new THREE.OctahedronGeometry(0.55, 0);
+  var gemMatNormal = new THREE.MeshStandardMaterial({
+    color: 0x40e0ff, emissive: 0x18c8ff, emissiveIntensity: 1.1, roughness: 0.15, metalness: 0.3
+  });
+  var gemMatGold = new THREE.MeshStandardMaterial({
+    color: 0xffd36b, emissive: 0xffb300, emissiveIntensity: 1.3, roughness: 0.15, metalness: 0.4
+  });
+  var gems = [];
+  var gemsSpawned = 0;
+
+  function randomFreeSpot(minFromPlayer) {
+    for (var t = 0; t < 80; t++) {
+      var x = (Math.random() * 2 - 1) * (ARENA - 2);
+      var z = (Math.random() * 2 - 1) * (ARENA - 2);
+      if (Math.hypot(x - player.position.x, z - player.position.z) < minFromPlayer) continue;
+      var ok = true;
+      for (var i = 0; i < pillars.length; i++) {
+        if (Math.hypot(x - pillars[i].x, z - pillars[i].z) < pillars[i].r + 1.4) { ok = false; break; }
+      }
+      if (ok) return { x: x, z: z };
+    }
+    return { x: 0, z: -8 };
+  }
+
+  function spawnGem(gem) {
+    gemsSpawned++;
+    var gold = gemsSpawned % 6 === 0;
+    var p = randomFreeSpot(6);
+    gem.value = gold ? 5 : 1;
+    gem.bonus = gold ? 4 : 2;
+    gem.mesh.material = gold ? gemMatGold : gemMatNormal;
+    gem.mesh.scale.setScalar(gold ? 1.35 : 1);
+    gem.x = p.x; gem.z = p.z;
+    gem.phase = Math.random() * Math.PI * 2;
+    gem.mesh.position.set(p.x, 1.1, p.z);
+  }
+  for (var gi = 0; gi < GEM_COUNT; gi++) {
+    var gm = new THREE.Mesh(gemGeo, gemMatNormal);
+    gm.castShadow = true;
+    scene.add(gm);
+    var gem = { mesh: gm, x: 0, z: 0, phase: 0, value: 1, bonus: 2 };
+    spawnGem(gem);
+    gems.push(gem);
+  }
+
+  // ------------------------------------------------------------------
+  // Particles (pooled)
+  // ------------------------------------------------------------------
+  var particleGeo = new THREE.TetrahedronGeometry(0.18, 0);
+  var particles = [];
+  for (var pi = 0; pi < 48; pi++) {
+    var pm = new THREE.Mesh(particleGeo, new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true }));
+    pm.visible = false;
+    scene.add(pm);
+    particles.push({ mesh: pm, vx: 0, vy: 0, vz: 0, life: 0 });
+  }
+  var particleCursor = 0;
+  function burst(x, y, z, color, n) {
+    for (var i = 0; i < n; i++) {
+      var p = particles[particleCursor];
+      particleCursor = (particleCursor + 1) % particles.length;
+      var a = Math.random() * Math.PI * 2;
+      var s = 2 + Math.random() * 4;
+      p.vx = Math.cos(a) * s; p.vz = Math.sin(a) * s; p.vy = 3 + Math.random() * 4;
+      p.life = 0.6 + Math.random() * 0.3;
+      p.mesh.material.color.setHex(color);
+      p.mesh.material.opacity = 1;
+      p.mesh.position.set(x, y, z);
+      p.mesh.scale.setScalar(1);
+      p.mesh.visible = true;
+    }
+  }
+  function updateParticles(dt) {
+    for (var i = 0; i < particles.length; i++) {
+      var p = particles[i];
+      if (p.life <= 0) continue;
+      p.life -= dt;
+      if (p.life <= 0) { p.mesh.visible = false; continue; }
+      p.vy -= 14 * dt;
+      p.mesh.position.x += p.vx * dt;
+      p.mesh.position.y = Math.max(0.05, p.mesh.position.y + p.vy * dt);
+      p.mesh.position.z += p.vz * dt;
+      p.mesh.rotation.x += 8 * dt;
+      p.mesh.rotation.y += 6 * dt;
+      p.mesh.material.opacity = Math.min(1, p.life * 2.5);
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Audio (tiny synth blips; unlocked on first tap, silent if unsupported)
+  // ------------------------------------------------------------------
+  var audioCtx = null;
+  function unlockAudio() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!audioCtx) audioCtx = new AC();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+  function blip(freq, dur, type, vol) {
+    if (!audioCtx || audioCtx.state !== 'running') return;
+    try {
+      var o = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      var t = audioCtx.currentTime;
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq * 1.6, t + dur);
+      g.gain.setValueAtTime(vol || 0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(audioCtx.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* ignore */ }
+  }
+
+  // ------------------------------------------------------------------
+  // Input: virtual joystick (touch identifier tracking) + keyboard fallback
+  // ------------------------------------------------------------------
+  var joyZone = document.getElementById('joyZone');
+  var joyBase = document.getElementById('joyBase');
+  var joyKnob = document.getElementById('joyKnob');
+  var JOY_R = 52;
+  var JOY_DEAD = 0.12;
+  var joy = { id: null, cx: 0, cy: 0, x: 0, y: 0 };
+
+  function placeJoystick(cx, cy, kx, ky) {
+    joyBase.style.transform = 'translate3d(' + cx + 'px,' + cy + 'px,0)';
+    joyKnob.style.transform = 'translate3d(' + kx + 'px,' + ky + 'px,0)';
+  }
+  function restJoystick() {
+    // Idle position: fixed ghost stick at bottom-left (respects safe area).
+    var h = window.innerHeight, w = window.innerWidth;
+    var cx = Math.min(w * 0.4, 100);
+    var cy = h - 100;
+    joyBase.classList.remove('active');
+    placeJoystick(cx, cy, cx, cy);
+  }
+  function findTouch(list, id) {
+    for (var i = 0; i < list.length; i++) if (list[i].identifier === id) return list[i];
+    return null;
+  }
+  function updateStick(t) {
+    var dx = t.clientX - joy.cx;
+    var dy = t.clientY - joy.cy;
+    var len = Math.hypot(dx, dy);
+    if (len > JOY_R) { dx = dx / len * JOY_R; dy = dy / len * JOY_R; len = JOY_R; }
+    var mag = len / JOY_R;
+    if (mag < JOY_DEAD) { joy.x = 0; joy.y = 0; }
+    else {
+      var scaled = (mag - JOY_DEAD) / (1 - JOY_DEAD);   // remap past dead zone
+      joy.x = dx / len * scaled;
+      joy.y = dy / len * scaled;
+    }
+    placeJoystick(joy.cx, joy.cy, joy.cx + dx, joy.cy + dy);
+  }
+  function endStick() {
+    joy.id = null; joy.x = 0; joy.y = 0;
+    restJoystick();
+  }
+
+  joyZone.addEventListener('touchstart', function (e) {
+    e.preventDefault();
+    unlockAudio();
+    if (joy.id !== null) return;                         // already tracking a finger
+    var t = e.changedTouches[0];
+    joy.id = t.identifier;
+    joy.cx = t.clientX; joy.cy = t.clientY;              // floating: appears where you touch
+    joyBase.classList.add('active');
+    updateStick(t);
+  }, { passive: false });
+
+  joyZone.addEventListener('touchmove', function (e) {
+    e.preventDefault();
+    if (joy.id === null) return;
+    var t = findTouch(e.changedTouches, joy.id);
+    if (t) updateStick(t);
+  }, { passive: false });
+
+  function touchEnd(e) {
+    if (e.cancelable) e.preventDefault();
+    if (joy.id === null) return;
+    if (findTouch(e.changedTouches, joy.id)) endStick();
+  }
+  joyZone.addEventListener('touchend', touchEnd, { passive: false });
+  joyZone.addEventListener('touchcancel', touchEnd, { passive: false });
+
+  var keys = {};
+  window.addEventListener('keydown', function (e) { keys[e.code] = true; });
+  window.addEventListener('keyup', function (e) { keys[e.code] = false; });
+  window.addEventListener('blur', function () { keys = {}; endStick(); });
+  document.addEventListener('visibilitychange', function () { if (document.hidden) { keys = {}; endStick(); } });
+  window.addEventListener('resize', function () { if (joy.id === null) restJoystick(); });
+  window.addEventListener('orientationchange', function () { setTimeout(function () { if (joy.id === null) restJoystick(); }, 200); });
+  restJoystick();
+
+  function readInput(out) {
+    var x = joy.x, y = joy.y;
+    var kx = (keys.ArrowRight || keys.KeyD ? 1 : 0) - (keys.ArrowLeft || keys.KeyA ? 1 : 0);
+    var ky = (keys.ArrowDown || keys.KeyS ? 1 : 0) - (keys.ArrowUp || keys.KeyW ? 1 : 0);
+    if (kx || ky) {
+      var l = Math.hypot(kx, ky);
+      x = kx / l; y = ky / l;
+    }
+    out.x = x; out.y = y;
+  }
+
+  // ------------------------------------------------------------------
+  // Game state & HUD
+  // ------------------------------------------------------------------
+  var scoreEl = document.getElementById('score');
+  var timeEl = document.getElementById('time');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovLine1 = document.getElementById('ovLine1');
+  var ovLine2 = document.getElementById('ovLine2');
+  var startBtn = document.getElementById('startBtn');
+
+  var state = 'ready';        // ready | playing | over
+  var score = 0, timeLeft = START_TIME;
+  var shownScore = -1, shownTime = -1;
+  var best = 0;
+  try { best = parseInt(localStorage.getItem('gemrush.best'), 10) || 0; } catch (e) { best = 0; }
+  var overlayShownAt = 0;
+
+  function setHud() {
+    if (score !== shownScore) { scoreEl.textContent = score; shownScore = score; }
+    var t = Math.max(0, Math.ceil(timeLeft));
+    if (t !== shownTime) {
+      timeEl.textContent = t; shownTime = t;
+      timeEl.classList.toggle('low', t <= 5);
+    }
+  }
+
+  function showOverlay(title, line1, line2, btn) {
+    ovTitle.textContent = title;
+    ovLine1.textContent = line1;
+    ovLine2.textContent = line2;
+    startBtn.textContent = btn;
+    overlay.classList.remove('hidden');
+    overlayShownAt = Date.now();
+  }
+
+  function startGame() {
+    unlockAudio();
+    score = 0; timeLeft = START_TIME;
+    vel.set(0, 0);
+    player.position.set(0, PLAYER_R, 0);
+    gemsSpawned = 0;
+    for (var i = 0; i < gems.length; i++) spawnGem(gems[i]);
+    snapCamera();
+    state = 'playing';
+    overlay.classList.add('hidden');
+    setHud();
+  }
+
+  function endGame() {
+    state = 'over';
+    var isBest = score > best;
+    if (isBest) {
+      best = score;
+      try { localStorage.setItem('gemrush.best', String(best)); } catch (e) { /* private mode */ }
+    }
+    endStick();
+    showOverlay("Time's up!", score + (score === 1 ? ' gem' : ' gems') + (isBest ? ' - new best!' : ''),
+      'Best: ' + best, 'PLAY AGAIN');
+    blip(300, 0.5, 'triangle', 0.14);
+  }
+
+  overlay.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (state === 'playing') return;
+    if (Date.now() - overlayShownAt < 500) return;       // avoid accidental instant restart
+    startGame();
+  });
+
+  showOverlay('Gem Rush',
+    best ? 'Best: ' + best : '',
+    'Drag the left side of the screen to roll. Grab glowing gems to add seconds. Gold gems are worth 5!',
+    'TAP TO PLAY');
+
+  // ------------------------------------------------------------------
+  // Camera follow
+  // ------------------------------------------------------------------
+  var camPos = new THREE.Vector3();
+  var camLook = new THREE.Vector3();
+  var tmpV = new THREE.Vector3();
+
+  function snapCamera() {
+    camLook.copy(player.position);
+    camPos.copy(player.position).addScaledVector(CAM_OFFSET, camDist);
+    camera.position.copy(camPos);
+    camera.lookAt(camLook);
+  }
+  function updateCamera(dt) {
+    var k = 1 - Math.exp(-5 * dt);                        // frame-rate independent smoothing
+    tmpV.copy(player.position).addScaledVector(CAM_OFFSET, camDist);
+    camPos.lerp(tmpV, k);
+    camLook.lerp(player.position, 1 - Math.exp(-8 * dt));
+    camera.position.copy(camPos);
+    camera.lookAt(camLook);
+    sun.position.copy(player.position).add(SUN_OFFSET);   // shadow frustum follows the player
+    sun.target.position.copy(player.position);
+    sun.target.updateMatrixWorld();
+  }
+
+  // ------------------------------------------------------------------
+  // Simulation
+  // ------------------------------------------------------------------
+  var input = { x: 0, y: 0 };
+
+  function updatePlayer(dt) {
+    readInput(input);
+    var tx = input.x * MAX_SPEED, tz = input.y * MAX_SPEED;   // camera faces -Z: stick up = -Z
+    var k = 1 - Math.exp(-ACCEL * dt);
+    vel.x += (tx - vel.x) * k;
+    vel.y += (tz - vel.y) * k;
+
+    var p = player.position;
+    var dx = vel.x * dt, dz = vel.y * dt;
+    p.x += dx; p.z += dz;
+
+    // Walls
+    var lim = ARENA - PLAYER_R;
+    if (p.x > lim)  { p.x = lim;  vel.x = Math.min(0, vel.x); }
+    if (p.x < -lim) { p.x = -lim; vel.x = Math.max(0, vel.x); }
+    if (p.z > lim)  { p.z = lim;  vel.y = Math.min(0, vel.y); }
+    if (p.z < -lim) { p.z = -lim; vel.y = Math.max(0, vel.y); }
+
+    // Pillars (circle vs circle push-out)
+    for (var i = 0; i < pillars.length; i++) {
+      var o = pillars[i];
+      var ox = p.x - o.x, oz = p.z - o.z;
+      var d = Math.hypot(ox, oz);
+      var min = o.r + PLAYER_R;
+      if (d < min) {
+        var nx, nz;
+        if (d < 1e-6) { nx = 1; nz = 0; } else { nx = ox / d; nz = oz / d; }
+        p.x = o.x + nx * min;
+        p.z = o.z + nz * min;
+        var vn = vel.x * nx + vel.y * nz;                 // remove velocity into the pillar
+        if (vn < 0) { vel.x -= vn * nx; vel.y -= vn * nz; }
+      }
+    }
+
+    // Roll the ball
+    var mvx = vel.x * dt, mvz = vel.y * dt;
+    var dist = Math.hypot(mvx, mvz);
+    if (dist > 1e-5) {
+      rollAxis.set(mvz, 0, -mvx).normalize();
+      rollQuat.setFromAxisAngle(rollAxis, dist / PLAYER_R);
+      player.quaternion.premultiply(rollQuat);
+    }
+  }
+
+  function updateGems(dt, t) {
+    var p = player.position;
+    var reach = PLAYER_R + 0.7;
+    for (var i = 0; i < gems.length; i++) {
+      var g = gems[i];
+      g.mesh.rotation.y += 2.2 * dt;
+      g.mesh.position.y = 1.1 + Math.sin(t * 2.5 + g.phase) * 0.18;
+      if (state !== 'playing') continue;
+      var dx = p.x - g.x, dz = p.z - g.z;
+      if (dx * dx + dz * dz < reach * reach) {
+        score += g.value;
+        timeLeft = Math.min(MAX_TIME, timeLeft + g.bonus);
+        var gold = g.value > 1;
+        burst(g.x, 1.1, g.z, gold ? 0xffd36b : 0x40e0ff, gold ? 18 : 10);
+        blip(gold ? 880 : 620, 0.16, 'sine', 0.1);
+        spawnGem(g);
+      }
+    }
+  }
+
+  // ------------------------------------------------------------------
+  // Main loop
+  // ------------------------------------------------------------------
+  var last = performance.now();
+  var elapsed = 0;
+
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(MAX_DT, (now - last) / 1000);        // clamp after tab switches / hitches
+    if (!(dt > 0)) dt = 0;
+    last = now;
+    elapsed += dt;
+
+    if (state === 'playing') {
+      updatePlayer(dt);
+      timeLeft -= dt;
+      if (timeLeft <= 0) { timeLeft = 0; setHud(); endGame(); }
+      else setHud();
+    } else {
+      vel.set(0, 0);
+    }
+    updateGems(dt, elapsed);
+    updateParticles(dt);
+    updateCamera(dt);
+    renderer.render(scene, camera);
+  }
+
+  snapCamera();
+  setHud();
+  requestAnimationFrame(function (t) { last = t; frame(t); });
+
+  // Test hook, only exposed when the page is opened with ?debug
+  if (location.search.indexOf('debug') !== -1) {
+    window.__game = {
+      get state() { return state; },
+      get score() { return score; },
+      get time() { return timeLeft; },
+      set time(v) { timeLeft = v; },
+      player: player, gems: gems, pillars: pillars
+    };
+  }
+})();
+</script>
+</body>
+</html>

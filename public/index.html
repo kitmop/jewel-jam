@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Jewel Jam">
+<meta name="theme-color" content="#2a1458">
+<meta name="format-detection" content="telephone=no">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath d='M32 4 58 32 32 60 6 32z' fill='%23ff7a8f'/%3E%3C/svg%3E">
+<title>Jewel Jam</title>
+<style>
+  *, *::before, *::after {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  :root {
+    --st: env(safe-area-inset-top, 0px);
+    --sb: env(safe-area-inset-bottom, 0px);
+    --sl: env(safe-area-inset-left, 0px);
+    --sr: env(safe-area-inset-right, 0px);
+  }
+  html, body {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    width: 100%; height: 100%;
+    margin: 0; padding: 0; overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
+    background: #2a1458;
+    background: linear-gradient(165deg, #2a1458 0%, #4a1f7a 45%, #b0407a 100%);
+    color: #fff;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Rounded", "Helvetica Neue", Arial, sans-serif;
+  }
+  button { font: inherit; color: inherit; border: 0; cursor: pointer; touch-action: manipulation; }
+  .hidden { display: none !important; }
+
+  /* ---------- Screens ---------- */
+  .screen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; }
+
+  #home {
+    display: flex; flex-direction: column; align-items: center;
+    padding: calc(var(--st) + 28px) calc(var(--sr) + 18px) calc(var(--sb) + 18px) calc(var(--sl) + 18px);
+    overflow: hidden;
+  }
+  #home h1 {
+    margin: 6px 0 0; font-size: clamp(40px, 11vmin, 68px); letter-spacing: .01em;
+    background: linear-gradient(90deg, #ffe36b, #ff7a8f, #c39bff); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 10px rgba(0,0,0,.35));
+  }
+  #home .sub { margin: 4px 0 18px; opacity: .8; font-size: 15px; }
+  #levels {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+    width: min(100%, 520px); margin: auto 0;
+  }
+  .lvl {
+    position: relative; aspect-ratio: 1 / 1.12; border-radius: 18px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    background: linear-gradient(180deg, #ffffff30, #ffffff12);
+    border: 2px solid #ffffff40; box-shadow: 0 6px 16px rgba(0,0,0,.25);
+    font-weight: 800; font-size: clamp(20px, 6vmin, 30px);
+  }
+  .lvl:active { transform: scale(.95); }
+  .lvl .stars { font-size: 13px; letter-spacing: 1px; color: #ffd36b; min-height: 15px; }
+  .lvl .stars .off { color: #ffffff40; }
+  .lvl.locked { opacity: .45; }
+  .lvl.next { border-color: #ffe36b; box-shadow: 0 0 18px #ffe36b88; animation: pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: scale(1.06); } }
+  .foot { display: flex; gap: 12px; margin-top: 12px; }
+  .chip { padding: 9px 16px; border-radius: 999px; background: #ffffff22; font-size: 14px; font-weight: 600; }
+
+  #gameUI { display: none; }
+  #gameUI.show { display: block; }
+  #board { position: fixed; top: 0; left: 0; width: 100%; height: 100%; touch-action: none; display: block; }
+
+  #hud {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 5; pointer-events: none;
+    padding: calc(var(--st) + 10px) calc(var(--sr) + 14px) 6px calc(var(--sl) + 14px);
+    text-shadow: 0 2px 6px rgba(0,0,0,.45);
+  }
+  #hud .row { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+  #hud .lab { font-size: 11px; letter-spacing: .14em; opacity: .75; font-weight: 700; }
+  #hud .val { font-size: 30px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+  #hud .right { text-align: right; }
+  #moves.low { color: #ff8da1; }
+  #scoreRow { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+  #scoreVal { font-size: 15px; font-weight: 800; min-width: 92px; font-variant-numeric: tabular-nums; }
+  #scoreBar { flex: 1; height: 12px; background: #00000040; border-radius: 99px; overflow: hidden; border: 1px solid #ffffff30; }
+  #scoreFill { height: 100%; width: 0; background: linear-gradient(90deg, #ffe36b, #ff7a8f); border-radius: 99px; transition: width .25s; }
+  #goals { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; min-height: 34px; }
+  .goal { display: flex; align-items: center; gap: 6px; padding: 3px 10px 3px 4px; border-radius: 99px; background: #00000040; font-weight: 800; font-size: 16px; }
+  .goal canvas { width: 28px; height: 28px; }
+  .goal.done { background: #2ea05a99; }
+  .jicon { width: 24px; height: 24px; margin: 2px; border-radius: 6px; background: #ff9be0aa; border: 2px solid #ffd0f2; }
+
+  #bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    display: flex; justify-content: center; gap: 12px;
+    padding: 8px calc(var(--sr) + 14px) calc(var(--sb) + 12px) calc(var(--sl) + 14px);
+  }
+  .btn {
+    padding: 12px 22px; border-radius: 999px; font-weight: 800; font-size: 16px; letter-spacing: .03em;
+    background: linear-gradient(180deg, #ffffff44, #ffffff1c); border: 2px solid #ffffff44;
+    box-shadow: 0 4px 12px rgba(0,0,0,.25);
+  }
+  .btn:active { transform: scale(.96); }
+  .btn.primary { color: #3a1450; background: linear-gradient(180deg, #ffec99, #ffc23d); border-color: #fff3c4; }
+
+  /* ---------- Modal ---------- */
+  #modal {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 30;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(20, 8, 40, .6); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+    padding: calc(var(--st) + 16px) 20px calc(var(--sb) + 16px);
+  }
+  #modal .card {
+    width: min(100%, 360px); padding: 22px 20px; text-align: center; border-radius: 26px;
+    background: linear-gradient(180deg, #5a2a94, #3a1a70); border: 2px solid #ffffff40;
+    box-shadow: 0 16px 50px rgba(0,0,0,.5); animation: pop .25s ease-out;
+  }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } }
+  .card h2 { margin: 0 0 8px; font-size: 28px; }
+  .card .big-stars { font-size: 44px; letter-spacing: 6px; color: #ffd36b; margin: 4px 0 8px; }
+  .card .big-stars .off { color: #ffffff30; }
+  .card p { margin: 6px 0; opacity: .9; }
+  .card ul { list-style: none; padding: 0; margin: 10px 0 14px; text-align: left; display: inline-block; }
+  .card li { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 17px; font-weight: 600; }
+  .card li canvas { width: 28px; height: 28px; }
+  .card .btns { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+
+  #toast {
+    position: fixed; left: 50%; top: 42%; z-index: 20; transform: translate(-50%, -50%);
+    padding: 12px 22px; border-radius: 99px; font-weight: 800; font-size: 20px;
+    background: #000000a0; pointer-events: none; opacity: 0; transition: opacity .25s;
+  }
+  #toast.show { opacity: 1; }
+
+  #fatal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 100; display: none; align-items: center; justify-content: center; padding: 32px; text-align: center; background: #2a1458; color: #ffb4c0; }
+</style>
+</head>
+<body>
+
+<div id="home" class="screen">
+  <h1>Jewel Jam</h1>
+  <div class="sub">Swap gems. Match 3. Clear all 10 levels.</div>
+  <div id="levels"></div>
+  <div class="foot">
+    <button class="chip" id="soundHome">Sound: on</button>
+    <button class="chip" id="resetBtn">Reset progress</button>
+  </div>
+</div>
+
+<div id="gameUI" class="screen">
+  <canvas id="board"></canvas>
+  <div id="hud">
+    <div class="row">
+      <div><div class="lab">LEVEL</div><div class="val" id="lvlNum">1</div></div>
+      <div class="right"><div class="lab">MOVES</div><div class="val" id="moves">0</div></div>
+    </div>
+    <div id="scoreRow"><div id="scoreVal">0 / 0</div><div id="scoreBar"><div id="scoreFill"></div></div></div>
+    <div id="goals"></div>
+  </div>
+  <div id="bar">
+    <button class="btn" id="menuBtn">Menu</button>
+    <button class="btn" id="hintBtn">Hint</button>
+  </div>
+</div>
+
+<div id="modal" class="hidden"><div class="card" id="card"></div></div>
+<div id="toast"></div>
+<div id="fatal"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var Q = location.search;
+  var FAST = /[?&]fast\b/.test(Q);     // test only: skip all animation
+  var DEBUG = /[?&]debug\b/.test(Q);   // test only: expose window.__game
+  var SIM = false;                     // true while the test bot plays headless
+
+  var $ = function (id) { return document.getElementById(id); };
+  var TAU = Math.PI * 2;
+  function rnd(n) { return Math.floor(Math.random() * n); }
+
+  window.addEventListener('error', function (e) {
+    var f = $('fatal'); f.textContent = 'Something went wrong: ' + (e.message || 'unknown error'); f.style.display = 'flex';
+  });
+
+  // ---------------------------------------------------------------- iOS touch hardening
+  var noop = function (e) { if (e.cancelable) e.preventDefault(); };
+  document.addEventListener('touchmove', noop, { passive: false });
+  document.addEventListener('gesturestart', noop, { passive: false });
+  document.addEventListener('gesturechange', noop, { passive: false });
+  document.addEventListener('contextmenu', noop);
+  document.addEventListener('selectstart', noop);
+  document.addEventListener('dblclick', noop);
+  var lastEnd = 0;
+  document.addEventListener('touchend', function (e) {
+    var n = Date.now();
+    if (n - lastEnd < 300 && e.cancelable && e.target.tagName !== 'BUTTON') e.preventDefault();
+    lastEnd = n;
+  }, { passive: false });
+
+  // ---------------------------------------------------------------- levels
+  function dist(r, c, R, C) { return Math.max(Math.abs(r - (R - 1) / 2), Math.abs(c - (C - 1) / 2)); }
+  function manh(r, c, R, C) { return Math.abs(r - (R - 1) / 2) + Math.abs(c - (C - 1) / 2); }
+
+  var LEVELS = [
+    { cols: 7, rows: 7, colors: 4, moves: 20, score: 1200, s2: 2000, s3: 3000, collect: [], jelly: null },
+    { cols: 7, rows: 8, colors: 5, moves: 18, score: 1500, s2: 3800, s3: 5800, collect: [{ t: 0, n: 22 }], jelly: null },
+    { cols: 7, rows: 7, colors: 5, moves: 18, score: 1500, s2: 3000, s3: 4600, collect: [],
+      jelly: function (r, c, R, C) { return manh(r, c, R, C) <= 2.5 ? 1 : 0; } },
+    { cols: 7, rows: 8, colors: 5, moves: 18, score: 2000, s2: 4300, s3: 5600, collect: [{ t: 1, n: 20 }, { t: 3, n: 20 }], jelly: null },
+    { cols: 7, rows: 8, colors: 5, moves: 18, score: 2500, s2: 4300, s3: 6500, collect: [],
+      jelly: function (r, c, R, C) { var d = dist(r, c, R, C); return d <= 1 ? 2 : d <= 2 ? 1 : 0; } },
+    { cols: 8, rows: 8, colors: 6, moves: 24, score: 4800, s2: 5100, s3: 5500, collect: [], jelly: null },
+    { cols: 7, rows: 8, colors: 5, moves: 28, score: 3000, s2: 8500, s3: 12500, collect: [],
+      jelly: function (r) { return r % 2 === 1 ? 1 : 0; } },
+    { cols: 8, rows: 8, colors: 6, moves: 24, score: 4000, s2: 4900, s3: 6400, collect: [{ t: 0, n: 20 }, { t: 2, n: 20 }, { t: 4, n: 20 }], jelly: null },
+    { cols: 7, rows: 8, colors: 6, moves: 38, score: 4500, s2: 7800, s3: 9800, collect: [{ t: 5, n: 18 }],
+      jelly: function (r, c, R) { return Math.abs(r - (R - 1) / 2) <= 0.5 ? 2 : 1; } },
+    { cols: 8, rows: 8, colors: 6, moves: 40, score: 7000, s2: 8700, s3: 11500, collect: [{ t: 1, n: 20 }],
+      jelly: function (r, c, R, C) { return dist(r, c, R, C) <= 1.5 ? 2 : 1; } }
+  ];
+
+  // ---------------------------------------------------------------- save data
+  var SAVE_KEY = 'jeweljam.v1';
+  var save = { stars: [], sound: true };
+  try {
+    var raw = localStorage.getItem(SAVE_KEY);
+    if (raw) { var o = JSON.parse(raw); if (o && Array.isArray(o.stars)) save = { stars: o.stars, sound: o.sound !== false }; }
+  } catch (e) { /* storage unavailable */ }
+  function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } }
+  function unlocked(i) { return i === 0 || (save.stars[i - 1] || 0) > 0; }
+
+  // ---------------------------------------------------------------- audio
+  var actx = null;
+  function unlockAudio() {
+    try {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      if (!actx) actx = new AC();
+      if (actx.state === 'suspended') actx.resume();
+    } catch (e) { actx = null; }
+  }
+  function tone(freq, dur, type, vol, slide, delay) {
+    if (!save.sound || SIM || FAST || !actx || actx.state !== 'running') return;
+    try {
+      var t = actx.currentTime + (delay || 0);
+      var o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq * slide), t + dur);
+      g.gain.setValueAtTime(vol || 0.1, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(actx.destination);
+      o.start(t); o.stop(t + dur + 0.03);
+    } catch (e) { /* ignore */ }
+  }
+  var PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21];
+  function sfxMatch(combo) {
+    var n = PENTA[Math.min(combo - 1, PENTA.length - 1)];
+    tone(392 * Math.pow(2, n / 12), 0.18, 'triangle', 0.13, 1.02);
+  }
+  function sfxSwap() { tone(330, 0.08, 'sine', 0.07, 1.3); }
+  function sfxBad() { tone(180, 0.18, 'square', 0.05, 0.7); }
+  function sfxSpecial() { tone(520, 0.35, 'sawtooth', 0.07, 2.2); tone(780, 0.3, 'triangle', 0.08, 1.5, 0.05); }
+  function sfxWin() { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.28, 'triangle', 0.12, 1, i * 0.12); }); }
+  function sfxLose() { [392, 330, 262].forEach(function (f, i) { tone(f, 0.3, 'triangle', 0.1, 0.97, i * 0.16); }); }
+
+  // ---------------------------------------------------------------- tweens
+  var tweens = [];
+  function easeOutQuad(t) { return 1 - (1 - t) * (1 - t); }
+  function easeInOut(t) { return t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function easeOutBack(t) { var c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); }
+  function tween(obj, to, dur, ease, delay) {
+    return new Promise(function (res) {
+      if (FAST || SIM || dur <= 0) { for (var k in to) obj[k] = to[k]; res(); return; }
+      var from = {};
+      for (var key in to) from[key] = obj[key];
+      tweens.push({ obj: obj, from: from, to: to, dur: dur, delay: delay || 0, t: 0, ease: ease || easeOutQuad, res: res });
+    });
+  }
+  function sleep(sec) { return tween({ v: 0 }, { v: 1 }, sec); }
+  function updateTweens(dt) {
+    for (var i = tweens.length - 1; i >= 0; i--) {
+      var tw = tweens[i];
+      tw.t += dt;
+      if (tw.t < tw.delay) continue;
+      var k = Math.min(1, (tw.t - tw.delay) / tw.dur), e = tw.ease(k);
+      for (var key in tw.to) tw.obj[key] = tw.from[key] + (tw.to[key] - tw.from[key]) * e;
+      if (k >= 1) { tweens.splice(i, 1); tw.res(); }
+    }
+  }
+
+  // ---------------------------------------------------------------- sprites
+  var COLORS = [['#ff8fa3', '#d9143c'], ['#7dbaff', '#1b57d6'], ['#8cec90', '#16912f'],
+                ['#fff08a', '#e0a000'], ['#d0aaff', '#7432d8'], ['#ffc08a', '#e8570a']];
+
+  function rr(g, x, y, w, h, r) {
+    g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+  function roundPoly(g, pts, rad) {
+    var n = pts.length;
+    for (var i = 0; i < n; i++) {
+      var p0 = pts[(i + n - 1) % n], p1 = pts[i], p2 = pts[(i + 1) % n];
+      var d1 = Math.hypot(p0.x - p1.x, p0.y - p1.y), d2 = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      var r1 = Math.min(rad, d1 / 2), r2 = Math.min(rad, d2 / 2);
+      var ax = p1.x + (p0.x - p1.x) * r1 / d1, ay = p1.y + (p0.y - p1.y) * r1 / d1;
+      var bx = p1.x + (p2.x - p1.x) * r2 / d2, by = p1.y + (p2.y - p1.y) * r2 / d2;
+      if (i === 0) g.moveTo(ax, ay); else g.lineTo(ax, ay);
+      g.quadraticCurveTo(p1.x, p1.y, bx, by);
+    }
+    g.closePath();
+  }
+  function pathShape(g, t, cx, cy, R) {
+    g.beginPath();
+    if (t === 0) g.arc(cx, cy, R * 0.98, 0, TAU);
+    else if (t === 1) rr(g, cx - R * 0.88, cy - R * 0.88, R * 1.76, R * 1.76, R * 0.45);
+    else if (t === 2) roundPoly(g, [{ x: cx, y: cy - R * 1.08 }, { x: cx + R * 1.08, y: cy + R * 0.85 }, { x: cx - R * 1.08, y: cy + R * 0.85 }], R * 0.3);
+    else if (t === 3) roundPoly(g, [{ x: cx, y: cy - R * 1.1 }, { x: cx + R * 0.95, y: cy }, { x: cx, y: cy + R * 1.1 }, { x: cx - R * 0.95, y: cy }], R * 0.22);
+    else if (t === 4) {
+      var h = []; for (var i = 0; i < 6; i++) { var a = -Math.PI / 2 + i * TAU / 6; h.push({ x: cx + Math.cos(a) * R * 1.02, y: cy + Math.sin(a) * R * 1.02 }); }
+      roundPoly(g, h, R * 0.26);
+    } else {
+      var s = []; for (var j = 0; j < 10; j++) { var b = -Math.PI / 2 + j * TAU / 10, rad = j % 2 ? R * 0.5 : R * 1.12; s.push({ x: cx + Math.cos(b) * rad, y: cy + Math.sin(b) * rad }); }
+      roundPoly(g, s, R * 0.14);
+    }
+  }
+  function renderSprite(S, t, s) {
+    var cv = document.createElement('canvas'); cv.width = cv.height = S;
+    var g = cv.getContext('2d'), cx = S / 2, cy = S / 2, R = S * 0.4;
+    if (s === 'color') {
+      var gl = g.createRadialGradient(cx, cy, R * 0.6, cx, cy, R * 1.25);
+      gl.addColorStop(0, 'rgba(255,255,255,.55)'); gl.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gl; g.fillRect(0, 0, S, S);
+      var sg = g.createRadialGradient(cx - R * 0.3, cy - R * 0.35, R * 0.1, cx, cy, R);
+      sg.addColorStop(0, '#6a5a86'); sg.addColorStop(1, '#14091f');
+      g.beginPath(); g.arc(cx, cy, R, 0, TAU); g.fillStyle = sg; g.fill();
+      g.lineWidth = S * 0.03; g.strokeStyle = 'rgba(255,255,255,.7)'; g.stroke();
+      for (var i = 0; i < 6; i++) {
+        var a = i * TAU / 6;
+        g.beginPath(); g.arc(cx + Math.cos(a) * R * 0.58, cy + Math.sin(a) * R * 0.58, R * 0.17, 0, TAU);
+        g.fillStyle = COLORS[i][0]; g.fill();
+      }
+      g.beginPath(); g.arc(cx, cy, R * 0.18, 0, TAU); g.fillStyle = '#fff'; g.fill();
+      return cv;
+    }
+    pathShape(g, t, cx, cy, R);
+    var gr = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R);
+    gr.addColorStop(0, COLORS[t][0]); gr.addColorStop(1, COLORS[t][1]);
+    g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = S * 0.05; g.shadowOffsetY = S * 0.025;
+    g.fillStyle = gr; g.fill();
+    g.shadowColor = 'transparent';
+    g.lineJoin = 'round'; g.lineWidth = S * 0.035; g.strokeStyle = 'rgba(255,255,255,.6)'; g.stroke();
+    g.save(); pathShape(g, t, cx, cy, R); g.clip();
+    var hg = g.createRadialGradient(cx - R * 0.35, cy - R * 0.45, 0, cx - R * 0.35, cy - R * 0.45, R * 0.95);
+    hg.addColorStop(0, 'rgba(255,255,255,.8)'); hg.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = hg; g.fillRect(0, 0, S, S);
+    if (s === 'row' || s === 'col') {
+      g.fillStyle = 'rgba(255,255,255,.88)';
+      [-0.5, 0, 0.5].forEach(function (k) {
+        if (s === 'row') g.fillRect(cx - R, cy + k * R - S * 0.035, 2 * R, S * 0.07);
+        else g.fillRect(cx + k * R - S * 0.035, cy - R, S * 0.07, 2 * R);
+      });
+    }
+    g.restore();
+    if (s === 'area') {
+      g.lineWidth = S * 0.06; g.strokeStyle = 'rgba(255,255,255,.95)';
+      g.beginPath(); g.arc(cx, cy, R * 0.55, 0, TAU); g.stroke();
+      g.beginPath(); g.arc(cx, cy, R * 0.2, 0, TAU); g.fillStyle = '#fff'; g.fill();
+    }
+    return cv;
+  }
+  var spriteCache = {}, spriteSize = 0;
+  function sprite(t, s) {
+    var key = t + '|' + (s || '');
+    return spriteCache[key] || (spriteCache[key] = renderSprite(spriteSize, t, s));
+  }
+
+  // ---------------------------------------------------------------- game state
+  var cvs = $('board'), ctx = cvs.getContext('2d');
+  var dpr = 1, W = 0, H = 0, cs = 40, ox = 0, oy = 0;
+  var L = 0, cfg = null, cols = 0, rows = 0;
+  var grid = [], jellyG = [], ghosts = [];
+  var moves = 0, score = 0, collected = {}, jellyLeft = 0, jellyTotal = 0;
+  var state = 'home';           // home | intro | play | end
+  var busy = false, selected = null, idle = 0, drag = null, pieceId = 1;
+  var particles = [], floaters = [], fxList = [];
+  var shownScore = -1, shownMoves = -1;
+  var T = 0;
+
+  function mk(t, r, c, s) { return { id: pieceId++, t: t, s: s || null, x: c, y: r, sc: 1, a: 1, hint: false }; }
+  function key(r, c) { return r * cols + c; }
+
+  function findMatches(pref) {
+    var hr = [], vr = [], r, c, e, p;
+    for (r = 0; r < rows; r++) {
+      c = 0;
+      while (c < cols) {
+        p = grid[r][c];
+        if (!p || p.t < 0) { c++; continue; }
+        e = c + 1;
+        while (e < cols && grid[r][e] && grid[r][e].t === p.t) e++;
+        if (e - c >= 3) hr.push({ r: r, c: c, len: e - c, t: p.t });
+        c = e;
+      }
+    }
+    for (c = 0; c < cols; c++) {
+      r = 0;
+      while (r < rows) {
+        p = grid[r][c];
+        if (!p || p.t < 0) { r++; continue; }
+        e = r + 1;
+        while (e < rows && grid[e][c] && grid[e][c].t === p.t) e++;
+        if (e - r >= 3) vr.push({ r: r, c: c, len: e - r, t: p.t });
+        r = e;
+      }
+    }
+    var cells = new Set(), creations = new Map(), hk = new Set();
+    var prio = { row: 2, col: 2, area: 3, color: 4 };
+    function mark(rr_, cc, t, s) {
+      var k = key(rr_, cc), o = creations.get(k);
+      if (!o || prio[s] > prio[o.s]) creations.set(k, { r: rr_, c: cc, t: s === 'color' ? -1 : t, s: s });
+    }
+    function isPref(rr_, cc) { return pref && pref.some(function (q) { return q[0] === rr_ && q[1] === cc; }); }
+    hr.forEach(function (run) { for (var i = 0; i < run.len; i++) { cells.add(key(run.r, run.c + i)); hk.add(key(run.r, run.c + i)); } });
+    vr.forEach(function (run) {
+      for (var i = 0; i < run.len; i++) {
+        var k = key(run.r + i, run.c);
+        cells.add(k);
+        if (hk.has(k)) mark(run.r + i, run.c, run.t, 'area');
+      }
+    });
+    hr.forEach(function (run) {
+      if (run.len < 4) return;
+      var at = run.c + (run.len >> 1);
+      for (var i = 0; i < run.len; i++) if (isPref(run.r, run.c + i)) at = run.c + i;
+      mark(run.r, at, run.t, run.len >= 5 ? 'color' : 'col');
+    });
+    vr.forEach(function (run) {
+      if (run.len < 4) return;
+      var at = run.r + (run.len >> 1);
+      for (var i = 0; i < run.len; i++) if (isPref(run.r + i, run.c)) at = run.r + i;
+      mark(at, run.c, run.t, run.len >= 5 ? 'color' : 'row');
+    });
+    return { cells: cells, creations: Array.from(creations.values()) };
+  }
+
+  // Expand a clear-set with every special piece's effect (chain reactions).
+  function expand(set, forced) {
+    var q = Array.from(set), fx = [];
+    function add(r, c) {
+      if (r < 0 || c < 0 || r >= rows || c >= cols || !grid[r][c]) return;
+      var k = key(r, c);
+      if (set.has(k)) return;
+      set.add(k); q.push(k);
+    }
+    while (q.length) {
+      var k = q.pop(), r = Math.floor(k / cols), c = k % cols, p = grid[r][c];
+      if (!p || !p.s) continue;
+      var i, j;
+      if (p.s === 'row') { for (i = 0; i < cols; i++) add(r, i); fx.push({ kind: 'row', r: r, c: c }); }
+      else if (p.s === 'col') { for (i = 0; i < rows; i++) add(i, c); fx.push({ kind: 'col', r: r, c: c }); }
+      else if (p.s === 'area') {
+        for (i = -1; i <= 1; i++) for (j = -1; j <= 1; j++) add(r + i, c + j);
+        fx.push({ kind: 'area', r: r, c: c });
+      } else if (p.s === 'color') {
+        var target = forced && forced.has(k) ? forced.get(k) : -2;
+        if (target === -2) {
+          var counts = {}, best = -1, bc = 0;
+          for (i = 0; i < rows; i++) for (j = 0; j < cols; j++) {
+            var o = grid[i][j];
+            if (o && o.t >= 0 && !set.has(key(i, j))) { counts[o.t] = (counts[o.t] || 0) + 1; if (counts[o.t] > bc) { bc = counts[o.t]; best = o.t; } }
+          }
+          target = best;
+        }
+        for (i = 0; i < rows; i++) for (j = 0; j < cols; j++) if (grid[i][j] && grid[i][j].t === target) add(i, j);
+        fx.push({ kind: 'color', r: r, c: c, t: target });
+      }
+    }
+    return fx;
+  }
+
+  function swapActivation(r1, c1, r2, c2) {
+    var a = grid[r1][c1], b = grid[r2][c2];
+    if (!a || !b || (!a.s && !b.s)) return null;
+    var set = new Set(), forced = new Map(), i, j;
+    if (a.s === 'color' && b.s === 'color') {
+      for (i = 0; i < rows; i++) for (j = 0; j < cols; j++) if (grid[i][j]) set.add(key(i, j));
+    } else if (a.s === 'color' || b.s === 'color') {
+      var bombAtA = a.s === 'color', br = bombAtA ? r1 : r2, bc = bombAtA ? c1 : c2, other = bombAtA ? b : a;
+      set.add(key(br, bc)); forced.set(key(br, bc), other.t);
+    } else { set.add(key(r1, c1)); set.add(key(r2, c2)); }
+    return { set: set, forced: forced };
+  }
+
+  // Every legal swap with a rough value; used for hints, shuffles and the test bot.
+  function validMoves() {
+    var out = [], r, c, d, dirs = [[0, 1], [1, 0]];
+    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) for (d = 0; d < 2; d++) {
+      var r2 = r + dirs[d][0], c2 = c + dirs[d][1];
+      if (r2 >= rows || c2 >= cols) continue;
+      var a = grid[r][c], b = grid[r2][c2];
+      if (!a || !b) continue;
+      var val = 0;
+      if (a.s || b.s) val = (a.s === 'color' || b.s === 'color') ? 30 : 12;
+      grid[r][c] = b; grid[r2][c2] = a;
+      var m = findMatches([[r, c], [r2, c2]]);
+      grid[r][c] = a; grid[r2][c2] = b;
+      if (m.cells.size) {
+        val += m.cells.size + m.creations.length * 6;
+        // prefer moves that make progress on the level goals (jelly, collect targets)
+        m.cells.forEach(function (k) {
+          var rr_ = Math.floor(k / cols), cc = k % cols;
+          if (jellyG[rr_][cc] > 0) val += 4;
+          var q = grid[rr_][cc];
+          if (q && q.t >= 0 && cfg.collect.some(function (g) { return g.t === q.t && (collected[g.t] || 0) < g.n; })) val += 2;
+        });
+      }
+      if (val) out.push({ r1: r, c1: c, r2: r2, c2: c2, val: val });
+    }
+    return out;
+  }
+
+  // ---------------------------------------------------------------- board creation
+  function randType() { return rnd(cfg.colors); }
+  function newBoard() {
+    for (;;) {
+      var g = [];
+      for (var r = 0; r < rows; r++) {
+        var row = [];
+        for (var c = 0; c < cols; c++) {
+          var t;
+          do { t = randType(); }
+          while ((c >= 2 && row[c - 1].t === t && row[c - 2].t === t) || (r >= 2 && g[r - 1][c].t === t && g[r - 2][c].t === t));
+          row.push(mk(t, r, c));
+        }
+        g.push(row);
+      }
+      grid = g;
+      if (validMoves().length) return;
+    }
+  }
+
+  async function gravity() {
+    var ps = [];
+    for (var c = 0; c < cols; c++) {
+      var write = rows - 1, r;
+      for (r = rows - 1; r >= 0; r--) {
+        var p = grid[r][c];
+        if (!p) continue;
+        if (r !== write) {
+          grid[write][c] = p; grid[r][c] = null;
+          ps.push(tween(p, { y: write }, 0.1 + 0.06 * (write - r), easeOutQuad));
+        }
+        write--;
+      }
+      var n = write + 1;
+      for (r = write; r >= 0; r--) {
+        var np = mk(randType(), r, c);
+        np.y = r - n - 0.2;
+        grid[r][c] = np;
+        ps.push(tween(np, { y: r }, 0.14 + 0.06 * n, easeOutQuad));
+      }
+    }
+    await Promise.all(ps);
+  }
+
+  async function shuffleBoard() {
+    var ps = [], r, c;
+    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) if (grid[r][c]) ps.push(grid[r][c]);
+    for (var attempt = 0; attempt < 600; attempt++) {
+      for (var i = ps.length - 1; i > 0; i--) { var j = rnd(i + 1), tmp = ps[i]; ps[i] = ps[j]; ps[j] = tmp; }
+      if (attempt > 0 && attempt % 100 === 0) ps.forEach(function (p) { if (!p.s) p.t = randType(); });
+      var n = 0;
+      for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) grid[r][c] = ps[n++];
+      if (findMatches().cells.size === 0 && validMoves().length) break;
+    }
+    var tw = [];
+    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) tw.push(tween(grid[r][c], { x: c, y: r }, 0.5, easeInOut));
+    await Promise.all(tw);
+  }
+
+  // ---------------------------------------------------------------- core turn logic
+  function addScore(n, x, y, label) {
+    score += n;
+    if (!SIM && !FAST && n > 0) floaters.push({ x: x, y: y, text: label || ('+' + n), life: 1 });
+  }
+
+  async function clearSet(set, creations, combo, fx) {
+    var ps = [], sx = 0, sy = 0, n = 0;
+    set.forEach(function (k) {
+      var r = Math.floor(k / cols), c = k % cols, p = grid[r][c];
+      if (!p) return;
+      grid[r][c] = null; ghosts.push(p);
+      if (p.t >= 0) collected[p.t] = (collected[p.t] || 0) + 1;
+      if (jellyG[r][c] > 0) { jellyG[r][c]--; if (jellyG[r][c] === 0) jellyLeft--; }
+      if (!SIM && !FAST) burst(px(p.x), py(p.y), p.t >= 0 ? COLORS[p.t][0] : '#ffffff', 6);
+      sx += p.x; sy += p.y; n++;
+      ps.push(tween(p, { sc: 0, a: 0 }, 0.24, easeOutQuad).then(function () { var i = ghosts.indexOf(p); if (i >= 0) ghosts.splice(i, 1); }));
+    });
+    var specialUsed = fx.length;
+    addScore(n * 20 * combo + specialUsed * 150, px(sx / Math.max(1, n)), py(sy / Math.max(1, n)),
+      combo > 1 ? '+' + (n * 20 * combo + specialUsed * 150) + '  x' + combo : null);
+    if (!SIM && !FAST) fx.forEach(function (f) { fxList.push({ kind: f.kind, r: f.r, c: f.c, life: 0.45 }); });
+    creations.forEach(function (cr) {
+      var np = mk(cr.t, cr.r, cr.c, cr.s);
+      np.sc = 0;
+      grid[cr.r][cr.c] = np;
+      ps.push(tween(np, { sc: 1 }, 0.35, easeOutBack));
+      addScore(0);
+    });
+    if (specialUsed || creations.length) sfxSpecial(); else sfxMatch(combo);
+    updateHUD();
+    await Promise.all(ps);
+  }
+
+  async function resolve(swapCells) {
+    var combo = 0, first = true;
+    for (;;) {
+      var set = new Set(), forced = new Map();
+      if (first && swapCells) {
+        var act = swapActivation(swapCells[0][0], swapCells[0][1], swapCells[1][0], swapCells[1][1]);
+        if (act) { act.set.forEach(function (k) { set.add(k); }); forced = act.forced; }
+      }
+      var m = findMatches(first ? swapCells : null);
+      m.cells.forEach(function (k) { set.add(k); });
+      if (!set.size) break;
+      combo++;
+      var fx = expand(set, forced);
+      await clearSet(set, m.creations, combo, fx);
+      await gravity();
+      first = false;
+    }
+    return combo;
+  }
+
+  // Performs one player move. Returns false if the swap is not legal.
+  async function playMove(r1, c1, r2, c2) {
+    var a = grid[r1][c1], b = grid[r2][c2];
+    if (!a || !b) return false;
+    sfxSwap();
+    grid[r1][c1] = b; grid[r2][c2] = a;
+    var legal = !!(a.s || b.s) || findMatches([[r1, c1], [r2, c2]]).cells.size > 0;
+    await Promise.all([tween(a, { x: c2, y: r2 }, 0.17, easeOutQuad), tween(b, { x: c1, y: r1 }, 0.17, easeOutQuad)]);
+    if (!legal) {
+      sfxBad();
+      grid[r1][c1] = a; grid[r2][c2] = b;
+      await Promise.all([tween(a, { x: c1, y: r1 }, 0.17, easeOutQuad), tween(b, { x: c2, y: r2 }, 0.17, easeOutQuad)]);
+      return false;
+    }
+    moves--;
+    updateHUD();
+    await resolve([[r1, c1], [r2, c2]]);
+    if (!goalsMet() && moves > 0 && !validMoves().length) {
+      toast('No moves - shuffling!');
+      await shuffleBoard();
+    }
+    return true;
+  }
+
+  function collectDone() {
+    return cfg.collect.every(function (g) { return (collected[g.t] || 0) >= g.n; });
+  }
+  function goalsMet() { return score >= cfg.score && collectDone() && jellyLeft <= 0; }
+
+  async function trySwap(r1, c1, r2, c2) {
+    if (busy || state !== 'play') return;
+    busy = true; selected = null; clearHint();
+    try {
+      var ok = await playMove(r1, c1, r2, c2);
+      if (ok) await checkEnd();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      busy = false; idle = 0;
+    }
+  }
+
+  async function checkEnd() {
+    if (goalsMet()) {
+      state = 'end';
+      var baseScore = score;      // stars are judged before the leftover-moves bonus
+      while (moves > 0) {
+        moves--; addScore(250, W / 2, oy + rows * cs / 2, '+250');
+        updateHUD(); sfxMatch(3);
+        await sleep(0.1);
+      }
+      sfxWin();
+      var stars = baseScore >= cfg.s3 ? 3 : baseScore >= cfg.s2 ? 2 : 1;
+      if (stars > (save.stars[L] || 0)) save.stars[L] = stars;
+      persist();
+      await sleep(0.4);
+      showWin(stars);
+    } else if (moves <= 0) {
+      state = 'end';
+      sfxLose();
+      await sleep(0.5);
+      showLose();
+    }
+  }
+
+  // ---------------------------------------------------------------- rendering
+  function px(x) { return ox + (x + 0.5) * cs; }
+  function py(y) { return oy + (y + 0.5) * cs; }
+
+  function burst(x, y, color, n) {
+    for (var i = 0; i < n && particles.length < 260; i++) {
+      var a = Math.random() * TAU, s = 60 + Math.random() * 160;
+      particles.push({ x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 60, life: 0.5 + Math.random() * 0.3, max: 0.8, color: color, size: 2 + Math.random() * 4 });
+    }
+  }
+
+  function layout() {
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cvs.width = Math.round(W * dpr); cvs.height = Math.round(H * dpr);
+    if (!cfg) return;
+    var hudB = $('hud').getBoundingClientRect().bottom;
+    var barT = $('bar').getBoundingClientRect().top;
+    var availH = Math.max(100, barT - hudB - 12), availW = W - 20;
+    cs = Math.floor(Math.min(availW / cols, availH / rows, 84));
+    ox = Math.round((W - cols * cs) / 2);
+    oy = Math.round(hudB + 6 + (availH - rows * cs) / 2);
+    var ns = Math.ceil(cs * 0.92 * dpr);
+    if (ns !== spriteSize) { spriteSize = ns; spriteCache = {}; }
+  }
+  var layoutTimer = 0;
+  function relayout() { layout(); clearTimeout(layoutTimer); layoutTimer = setTimeout(layout, 150); setTimeout(layout, 450); }
+  window.addEventListener('resize', layout);
+  window.addEventListener('orientationchange', relayout);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', layout);
+
+  function drawPiece(p, now) {
+    var sc = p.sc, size = cs * 0.92;
+    if (p.hint) sc *= 1 + Math.sin(now * 9) * 0.1;
+    if (selected && grid[selected.r] && grid[selected.r][selected.c] === p) sc *= 1.1 + Math.sin(now * 10) * 0.04;
+    if (sc <= 0.01 || p.a <= 0.01) return;
+    var img = sprite(p.t, p.s), x = px(p.x), y = py(p.y), sz = size * sc;
+    ctx.globalAlpha = p.a;
+    if (p.s === 'color') {
+      ctx.save(); ctx.translate(x, y); ctx.rotate(now * 0.8); ctx.drawImage(img, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+    } else if (p.s) {
+      var wob = 1 + Math.sin(now * 5 + p.id) * 0.04;
+      ctx.drawImage(img, x - sz * wob / 2, y - sz * wob / 2, sz * wob, sz * wob);
+    } else ctx.drawImage(img, x - sz / 2, y - sz / 2, sz, sz);
+    ctx.globalAlpha = 1;
+  }
+
+  function render(dt, now) {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+    if (!cfg || state === 'home') return;
+    var bw = cols * cs, bh = rows * cs, r, c;
+    ctx.fillStyle = 'rgba(15,6,35,.45)';
+    ctx.beginPath(); rr(ctx, ox - 8, oy - 8, bw + 16, bh + 16, 20); ctx.fill();
+    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) {
+      ctx.fillStyle = (r + c) % 2 ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.12)';
+      ctx.fillRect(ox + c * cs, oy + r * cs, cs, cs);
+      var j = jellyG[r] && jellyG[r][c];
+      if (j > 0) {
+        ctx.beginPath(); rr(ctx, ox + c * cs + 2, oy + r * cs + 2, cs - 4, cs - 4, cs * 0.18);
+        ctx.fillStyle = j > 1 ? 'rgba(180,110,255,.62)' : 'rgba(255,150,225,.42)'; ctx.fill();
+        ctx.lineWidth = j > 1 ? 3 : 2; ctx.strokeStyle = j > 1 ? 'rgba(235,205,255,.95)' : 'rgba(255,215,243,.8)'; ctx.stroke();
+      }
+    }
+    ctx.save();
+    ctx.beginPath(); ctx.rect(ox, oy, bw, bh); ctx.clip();
+    for (r = 0; r < rows; r++) for (c = 0; c < cols; c++) if (grid[r][c]) drawPiece(grid[r][c], now);
+    for (var i = 0; i < ghosts.length; i++) drawPiece(ghosts[i], now);
+    // special-effect beams
+    for (i = fxList.length - 1; i >= 0; i--) {
+      var f = fxList[i]; f.life -= dt;
+      if (f.life <= 0) { fxList.splice(i, 1); continue; }
+      var al = Math.min(1, f.life / 0.3);
+      ctx.globalAlpha = al; ctx.fillStyle = '#fff';
+      if (f.kind === 'row') ctx.fillRect(ox, py(f.r) - cs * 0.18 * al, bw, cs * 0.36 * al);
+      else if (f.kind === 'col') ctx.fillRect(px(f.c) - cs * 0.18 * al, oy, cs * 0.36 * al, bh);
+      else if (f.kind === 'area') { ctx.beginPath(); ctx.arc(px(f.c), py(f.r), cs * (2.2 - al * 1.2), 0, TAU); ctx.lineWidth = 6 * al; ctx.strokeStyle = '#fff'; ctx.stroke(); }
+      else { ctx.fillStyle = 'rgba(255,255,255,' + (0.5 * al) + ')'; ctx.fillRect(ox, oy, bw, bh); }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+    for (i = particles.length - 1; i >= 0; i--) {
+      var p = particles[i]; p.life -= dt;
+      if (p.life <= 0) { particles.splice(i, 1); continue; }
+      p.vy += 520 * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      ctx.globalAlpha = Math.min(1, p.life / 0.4); ctx.fillStyle = p.color;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+    ctx.font = '800 ' + Math.round(cs * 0.42) + 'px -apple-system, Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (i = floaters.length - 1; i >= 0; i--) {
+      var fl = floaters[i]; fl.life -= dt * 0.9;
+      if (fl.life <= 0) { floaters.splice(i, 1); continue; }
+      ctx.globalAlpha = Math.min(1, fl.life * 2); fl.y -= 40 * dt;
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(40,10,70,.8)'; ctx.strokeText(fl.text, fl.x, fl.y);
+      ctx.fillStyle = '#fff4b0'; ctx.fillText(fl.text, fl.x, fl.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // ---------------------------------------------------------------- hints
+  function clearHint() {
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) if (grid[r] && grid[r][c]) grid[r][c].hint = false;
+  }
+  function showHint() {
+    if (busy || state !== 'play') return;
+    clearHint();
+    var mv = validMoves();
+    if (!mv.length) return;
+    mv.sort(function (a, b) { return b.val - a.val; });
+    var best = mv[0];
+    grid[best.r1][best.c1].hint = true; grid[best.r2][best.c2].hint = true;
+  }
+
+  // ---------------------------------------------------------------- input
+  function cellAt(x, y) {
+    var c = Math.floor((x - ox) / cs), r = Math.floor((y - oy) / cs);
+    return (r >= 0 && c >= 0 && r < rows && c < cols) ? { r: r, c: c } : null;
+  }
+  cvs.addEventListener('pointerdown', function (e) {
+    if (state !== 'play' || busy) return;
+    e.preventDefault(); unlockAudio(); idle = 0; clearHint();
+    var cell = cellAt(e.clientX, e.clientY);
+    if (!cell) return;
+    if (selected && Math.abs(selected.r - cell.r) + Math.abs(selected.c - cell.c) === 1) {
+      var s = selected; selected = null; drag = null;
+      trySwap(s.r, s.c, cell.r, cell.c);
+      return;
+    }
+    if (selected && selected.r === cell.r && selected.c === cell.c) { selected = null; drag = null; return; }
+    selected = cell;
+    drag = { id: e.pointerId, r: cell.r, c: cell.c, x: e.clientX, y: e.clientY };
+    try { cvs.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+  });
+  cvs.addEventListener('pointermove', function (e) {
+    if (!drag || e.pointerId !== drag.id || busy || state !== 'play') return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < cs * 0.35) return;
+    var r2 = drag.r, c2 = drag.c;
+    if (Math.abs(dx) > Math.abs(dy)) c2 += dx > 0 ? 1 : -1; else r2 += dy > 0 ? 1 : -1;
+    var d = drag; drag = null; selected = null;
+    if (r2 >= 0 && c2 >= 0 && r2 < rows && c2 < cols) trySwap(d.r, d.c, r2, c2);
+  });
+  function endDrag(e) { if (drag && e.pointerId === drag.id) drag = null; }
+  cvs.addEventListener('pointerup', endDrag);
+  cvs.addEventListener('pointercancel', endDrag);
+
+  // ---------------------------------------------------------------- HUD / UI
+  var goalRefs = [];
+  function updateHUD() {
+    if (moves !== shownMoves) { $('moves').textContent = moves; $('moves').classList.toggle('low', moves <= 5); shownMoves = moves; }
+    if (score !== shownScore) {
+      $('scoreVal').textContent = score + ' / ' + cfg.score;
+      $('scoreFill').style.width = Math.min(100, score / cfg.score * 100) + '%';
+      shownScore = score;
+    }
+    goalRefs.forEach(function (g) {
+      var left = g.j ? Math.max(0, jellyLeft) : Math.max(0, g.n - (collected[g.t] || 0));
+      g.span.textContent = left > 0 ? left : '✓';
+      g.el.classList.toggle('done', left <= 0);
+    });
+  }
+  function iconCanvas(t, size) {
+    var c = document.createElement('canvas'); c.width = c.height = size;
+    c.getContext('2d').drawImage(renderSprite(size, t, null), 0, 0);
+    return c;
+  }
+  function buildGoals() {
+    var box = $('goals'); box.innerHTML = ''; goalRefs = [];
+    cfg.collect.forEach(function (g) {
+      var el = document.createElement('div'); el.className = 'goal';
+      el.appendChild(iconCanvas(g.t, 56));
+      var span = document.createElement('span'); el.appendChild(span); box.appendChild(el);
+      goalRefs.push({ el: el, span: span, t: g.t, n: g.n });
+    });
+    if (jellyTotal > 0) {
+      var el2 = document.createElement('div'); el2.className = 'goal';
+      var ic = document.createElement('div'); ic.className = 'jicon'; el2.appendChild(ic);
+      var sp = document.createElement('span'); el2.appendChild(sp); box.appendChild(el2);
+      goalRefs.push({ el: el2, span: sp, j: true });
+    }
+  }
+
+  var toastTimer = 0;
+  function toast(text) {
+    var t = $('toast'); t.textContent = text; t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove('show'); }, 1400);
+  }
+
+  function showModal(build) {
+    var card = $('card'); card.innerHTML = '';
+    build(card);
+    $('modal').classList.remove('hidden');
+  }
+  function hideModal() { $('modal').classList.add('hidden'); }
+  function addBtn(card, text, cls, fn) {
+    var wrap = card.querySelector('.btns');
+    if (!wrap) { wrap = document.createElement('div'); wrap.className = 'btns'; card.appendChild(wrap); }
+    var b = document.createElement('button'); b.className = 'btn ' + (cls || ''); b.textContent = text;
+    b.addEventListener('click', function () { unlockAudio(); fn(); });
+    wrap.appendChild(b);
+  }
+  function el(tag, text, cls) { var e = document.createElement(tag); if (text) e.textContent = text; if (cls) e.className = cls; return e; }
+  function starHTML(n, parent) {
+    var d = el('div', '', 'big-stars');
+    for (var i = 0; i < 3; i++) { var s = el('span', '★', i < n ? '' : 'off'); d.appendChild(s); }
+    parent.appendChild(d);
+  }
+
+  function showIntro() {
+    showModal(function (card) {
+      card.appendChild(el('h2', 'Level ' + (L + 1)));
+      var ul = document.createElement('ul');
+      var li = el('li', 'Reach ' + cfg.score + ' points'); ul.appendChild(li);
+      cfg.collect.forEach(function (g) { var l = el('li', 'Collect ' + g.n); l.insertBefore(iconCanvas(g.t, 56), l.firstChild); ul.appendChild(l); });
+      if (jellyTotal > 0) ul.appendChild(el('li', 'Clear all jelly tiles'));
+      ul.appendChild(el('li', 'In ' + cfg.moves + ' moves'));
+      card.appendChild(ul);
+      addBtn(card, 'PLAY', 'primary', function () { hideModal(); state = 'play'; idle = 0; });
+      addBtn(card, 'Back', '', goHome);
+    });
+  }
+  function showWin(stars) {
+    showModal(function (card) {
+      card.appendChild(el('h2', 'Level complete!'));
+      starHTML(stars, card);
+      card.appendChild(el('p', 'Score: ' + score));
+      if (L + 1 < LEVELS.length) addBtn(card, 'NEXT LEVEL', 'primary', function () { hideModal(); openLevel(L + 1); });
+      else card.appendChild(el('p', 'You cleared every level - amazing!'));
+      addBtn(card, 'Replay', '', function () { hideModal(); openLevel(L); });
+      addBtn(card, 'Levels', '', goHome);
+    });
+  }
+  function showLose() {
+    showModal(function (card) {
+      card.appendChild(el('h2', 'Out of moves'));
+      card.appendChild(el('p', 'Score: ' + score + ' / ' + cfg.score));
+      addBtn(card, 'TRY AGAIN', 'primary', function () { hideModal(); openLevel(L); });
+      addBtn(card, 'Levels', '', goHome);
+    });
+  }
+  function showMenu() {
+    if (state !== 'play' || busy) return;
+    var prev = state; state = 'menu';
+    showModal(function (card) {
+      card.appendChild(el('h2', 'Paused'));
+      addBtn(card, 'Resume', 'primary', function () { hideModal(); state = prev; });
+      addBtn(card, 'Restart level', '', function () { hideModal(); openLevel(L); });
+      addBtn(card, 'Sound: ' + (save.sound ? 'on' : 'off'), '', function () { setSound(!save.sound); hideModal(); state = prev; });
+      addBtn(card, 'All levels', '', goHome);
+    });
+  }
+  function setSound(on) { save.sound = on; persist(); $('soundHome').textContent = 'Sound: ' + (on ? 'on' : 'off'); }
+
+  function renderHome() {
+    var box = $('levels'); box.innerHTML = '';
+    var nextShown = false;
+    LEVELS.forEach(function (lv, i) {
+      var b = document.createElement('button');
+      var ok = unlocked(i), st = save.stars[i] || 0;
+      b.className = 'lvl' + (ok ? '' : ' locked');
+      if (ok && !st && !nextShown) { b.classList.add('next'); nextShown = true; }
+      b.appendChild(el('div', ok ? String(i + 1) : '🔒'));
+      var s = el('div', '', 'stars');
+      if (ok) for (var k = 0; k < 3; k++) s.appendChild(el('span', '★', k < st ? '' : 'off'));
+      b.appendChild(s);
+      b.addEventListener('click', function () { unlockAudio(); if (ok) openLevel(i); else toast('Finish level ' + i + ' first'); });
+      box.appendChild(b);
+    });
+    $('soundHome').textContent = 'Sound: ' + (save.sound ? 'on' : 'off');
+  }
+  function goHome() {
+    hideModal(); state = 'home'; busy = false; tweens.length = 0;
+    $('gameUI').classList.remove('show'); $('home').classList.remove('hidden');
+    renderHome();
+  }
+
+  function setupLevel(i) {
+    L = i; cfg = LEVELS[i]; cols = cfg.cols; rows = cfg.rows;
+    moves = cfg.moves; score = 0; collected = {}; ghosts = []; particles = []; floaters = []; fxList = [];
+    selected = null; drag = null; busy = false; idle = 0; tweens.length = 0;
+    shownScore = shownMoves = -1;
+    jellyG = []; jellyLeft = 0;
+    for (var r = 0; r < rows; r++) {
+      var row = [];
+      for (var c = 0; c < cols; c++) {
+        var v = cfg.jelly ? cfg.jelly(r, c, rows, cols) : 0;
+        row.push(v); if (v > 0) jellyLeft++;
+      }
+      jellyG.push(row);
+    }
+    jellyTotal = jellyLeft;
+    newBoard();
+  }
+  function openLevel(i) {
+    hideModal();
+    setupLevel(i);
+    $('lvlNum').textContent = String(i + 1);
+    buildGoals();
+    $('home').classList.add('hidden');
+    $('gameUI').classList.add('show');
+    layout();
+    updateHUD();
+    state = 'intro';
+    // drop the pieces in
+    for (var r = 0; r < rows; r++) for (var c = 0; c < cols; c++) {
+      var p = grid[r][c]; p.y = r - rows - 1;
+      tween(p, { y: r }, 0.45, easeOutQuad, c * 0.04 + (rows - r) * 0.02);
+    }
+    showIntro();
+  }
+
+  $('menuBtn').addEventListener('click', showMenu);
+  $('hintBtn').addEventListener('click', function () { unlockAudio(); showHint(); });
+  $('soundHome').addEventListener('click', function () { unlockAudio(); setSound(!save.sound); });
+  $('resetBtn').addEventListener('click', function () {
+    if (window.confirm('Erase all progress?')) { save.stars = []; persist(); renderHome(); }
+  });
+
+  // ---------------------------------------------------------------- main loop
+  var last = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(0.05, Math.max(0, (now - last) / 1000)); last = now;
+    updateTweens(dt);
+    if (state === 'play' && !busy) {
+      idle += dt;
+      if (idle > 6 && !grid[0].some(function (p) { return p && p.hint; })) showHint();
+    }
+    render(dt, now / 1000);
+  }
+
+  layout();
+  renderHome();
+  requestAnimationFrame(function (t) { last = t; frame(t); });
+
+  // ---------------------------------------------------------------- headless test bot (?debug only)
+  if (DEBUG) {
+    window.__game = {
+      get state() { return state; },
+      get score() { return score; },
+      get moves() { return moves; },
+      get grid() { return grid; },
+      get jellyLeft() { return jellyLeft; },
+      get cs() { return cs; }, get ox() { return ox; }, get oy() { return oy; },
+      get rows() { return rows; }, get cols() { return cols; },
+      openLevel: openLevel, validMoves: validMoves, playMove: playMove, trySwap: trySwap,
+      goalsMet: goalsMet, save: save, LEVELS: LEVELS,
+      // Play a level with no animation and report the outcome.
+      simulate: async function (li, policy) {
+        SIM = true;
+        try {
+          setupLevel(li);
+          var guard = 0;
+          while (moves > 0 && !goalsMet() && guard++ < 200) {
+            var mv = validMoves();
+            if (!mv.length) { await shuffleBoard(); continue; }
+            var pick;
+            if (policy === 'random') pick = mv[rnd(mv.length)];
+            else {
+              mv.sort(function (a, b) { return b.val - a.val; });
+              var top = mv.filter(function (m) { return m.val >= mv[0].val - (policy === 'good' ? 0 : 3); });
+              pick = top[rnd(top.length)];
+            }
+            await playMove(pick.r1, pick.c1, pick.r2, pick.c2);
+          }
+          return { won: goalsMet(), score: score, movesLeft: moves };
+        } finally { SIM = false; }
+      }
+    };
+  }
+})();
+</script>
+</body>
+</html>

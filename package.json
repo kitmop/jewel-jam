@@ -1,0 +1,17 @@
+{
+  "name": "homeserver-game",
+  "version": "1.0.0",
+  "description": "Minimal static server for a Three.js mobile game",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}
