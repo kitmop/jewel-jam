@@ -1,0 +1,3 @@
+# Static site: no build step, publish the public/ folder as-is.
+[build]
+  publish = "public"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Turns a Linux Mint laptop into an always-on home web server.
+# Turns an apt-based Linux machine (Debian, Ubuntu, Linux Mint, ...) into an always-on web server.
 #
 #   ./setup.sh                      # everything except the Cloudflare tunnel
 #   CF_TUNNEL_TOKEN=eyJ... ./setup.sh   # ...and install a permanent named tunnel
@@ -55,7 +55,7 @@ run sudo systemctl kill -s HUP systemd-logind
 # Make suspend/hibernate impossible (undo: sudo systemctl unmask sleep.target suspend.target hibernate.target hybrid-sleep.target)
 run sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
 
-# Linux Mint's Cinnamon power daemon has its own lid/idle handling on top of logind.
+# Cinnamon (Linux Mint) has its own lid/idle power handling on top of logind.
 set_gsetting() {   # schema key value  (skips silently if the schema/key does not exist)
   local schema="$1" key="$2" value="$3" keys
   keys="$(gsettings list-keys "$schema" 2>/dev/null || true)"
