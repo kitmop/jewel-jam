@@ -3,12 +3,7 @@
 **Jewel Jam** is a 10-level match-3 game (`public/index.html`, single file, no build step).
 The 3D rolling-ball game from earlier lives at `public/gemrush.html`.
 
-## GitHub Pages
-
-Every push to `main` deploys `public/` via `.github/workflows/pages.yml`.
-The site is at `https://<your-user>.github.io/<repo>/` (HTTPS, free, works when your laptop is off).
-
-## Self-hosting on a Linux Mint laptop (optional)
+## Self-hosting on a Linux machine (optional)
 
 ```
 homeserver/
